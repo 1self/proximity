@@ -48,7 +48,7 @@ var activateBeacon = function(event, sensorsCollection, sensor){
 
 	var options  = {
 		upsert: true
-	}
+	};
 
 	sensorsCollection.update(condition, operation, options, function(err, res){
 		if(err){

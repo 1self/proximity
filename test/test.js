@@ -33,24 +33,27 @@ describe('proximity node module', function () {
   		}
   	};
 
-    var mongoClient = {
-    	sensors: {}
-    };
-
-    mongoClient.sensors.find = function(){
-    	return null;
-    };
+    var sensors = {};
 
     var beaconActivated = false;
-    mongoClient.sensors.update = function(condition, operation){
+
+    sensors.update = function(condition, operation, options){
     	console.log('condition: ' + JSON.stringify(condition));
     	console.log('operation: ' + JSON.stringify(operation));
-    	if(condition.url === 'ibeacon://region1/1/1' && operation.$set.active === true){
+    	if(condition.url === 'ibeacon://region1/1/1' && operation.$set.active === true && options.upsert === true){
     		beaconActivated = true;
     	}
     };
 
-    proximity.processMessage(beaconStart, mongoClient);
+    sensors.find = function(){
+    	var result = {};
+    	result.toArray = function(callback){
+    		callback(null, []);
+    	};
+    	return result;
+    };
+
+    proximity.processMessage(beaconStart, sensors);
     assert(beaconActivated, 'database not updated with beacon active');
    });
 });
