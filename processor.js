@@ -35,7 +35,6 @@ var _ = require('lodash');
 // };
 
 var activateBeacon = function(event, sensorsCollection, sensor){
-	console.log('activating beacon ' + sensor.url);
 	var condition = {
 		url: sensor.url
 	};
@@ -43,6 +42,32 @@ var activateBeacon = function(event, sensorsCollection, sensor){
 	var operation = {
 		$set: {
 			active: true
+		}
+	};
+
+	var options  = {
+		upsert: true
+	};
+
+	sensorsCollection.update(condition, operation, options, function(err, res){
+		if(err){
+			console.log(err);
+		} 
+		else{
+			console.log('Wrote to the database ' + res);
+		}
+
+	});
+};
+
+var deactivateBeacon = function(event, sensorsCollection, sensor){
+	var condition = {
+		url: sensor.url
+	};
+
+	var operation = {
+		$set: {
+			active: false
 		}
 	};
 
@@ -72,7 +97,6 @@ var getSensor = function(event, sensorsCollection, callback){
 	};
 
 	sensorsCollection.find(condition).toArray(function(err, docs){
-		//console.log(docs);
 		var result;
 		if(docs.length === 0){
 			result = {
@@ -86,13 +110,11 @@ var getSensor = function(event, sensorsCollection, callback){
 			result = docs[0];
 		}
 
-		console.log(result);
 		callback(result);
 	});
 };
 
 var processMessage = function(event, sensorsCollection){
-	console.log(event.objectTags);
 	var isProximity = _.indexOf(event.objectTags, 'proximity') >= 0; 
 	if(isProximity){
 		getSensor(event, sensorsCollection, function(sensor){
@@ -104,10 +126,15 @@ var processMessage = function(event, sensorsCollection){
 				//unlink(event.streamid, event.properties.regionId);
 			}
 
-			var startStopIntersection = _.intersection(event.actionTags, ['start']);
+			var startStopIntersection = _.intersection(event.actionTags, ['start', 'stop']);
 			if(startStopIntersection[0] === 'start'){
 				activateBeacon(event, sensorsCollection, sensor);
 			}
+
+			if(startStopIntersection[0] === 'stop'){
+				deactivateBeacon(event, sensorsCollection, sensor);
+			}
+
 		});
 	}
 };

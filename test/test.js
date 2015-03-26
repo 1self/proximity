@@ -38,8 +38,6 @@ describe('proximity node module', function () {
     var beaconActivated = false;
 
     sensors.update = function(condition, operation, options){
-    	console.log('condition: ' + JSON.stringify(condition));
-    	console.log('operation: ' + JSON.stringify(operation));
     	if(condition.url === 'ibeacon://region1/1/1' && operation.$set.active === true && options.upsert === true){
     		beaconActivated = true;
     	}
@@ -55,6 +53,91 @@ describe('proximity node module', function () {
 
     proximity.processMessage(beaconStart, sensors);
     assert(beaconActivated, 'database not updated with beacon active');
+   });
+});
+
+describe('proximity node module', function () {
+  it('beacon exit to unknown beacon is set to inactive', function () {
+   	var beaconStop = { 
+  		streamid: "11111111",
+  		objectTags:['proximity', 'ibeacon'],
+  		actionTags:['stop'],
+  		properties:{
+  			regionId: "region1",
+  			major: 1,
+  			minor: 1
+  		}
+  	};
+
+    var sensors = {};
+
+    sensors.update = function(condition, operation){
+    	var isInactive = condition.url === 'ibeacon://region1/1/1' && operation.$set.active === false;
+    	assert(isInactive, "Beacon exit did not set sensor to inactive");
+    };
+
+    sensors.find = function(){
+    	var result = {};
+    	result.toArray = function(callback){
+    		callback(null, []);
+    	};
+    	return result;
+    };
+
+    proximity.processMessage(beaconStop, sensors);
+   });
+});
+
+describe('proximity node module', function () {
+  it('beacon exit to known beacon is set to deactivated', function () {
+    var sensors = {};
+
+    sensors.update = function(){
+
+    };
+
+    sensors.find = function(){
+    	var result = {};
+    	result.toArray = function(callback){
+    		callback(null, []);
+    	};
+    	return result;
+    };
+
+    var beaconStart = { 
+  		streamid: "11111111",
+  		objectTags:['proximity', 'ibeacon'],
+  		actionTags:['start'],
+  		properties:{
+  			regionId: "region1",
+  			major: 1,
+  			minor: 1
+  		}
+  	};
+
+    proximity.processMessage(beaconStart, sensors);
+
+    var stopDeactivates = false;
+    sensors.update = function(condition, operation){
+    	if(condition.url === 'ibeacon://region1/1/1' && operation.$set.active === false){
+    		stopDeactivates = true;
+    	}
+    };
+
+    var beaconStop = { 
+  		streamid: "11111111",
+  		objectTags:['proximity', 'ibeacon'],
+  		actionTags:['stop'],
+  		properties:{
+  			regionId: "region1",
+  			major: 1,
+  			minor: 1
+  		}
+  	};
+
+  	proximity.processMessage(beaconStop, sensors);
+
+    assert(stopDeactivates, 'Beacon stop doesn\'t cause deactivation');
    });
 });
 
