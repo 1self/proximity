@@ -34,21 +34,34 @@ var _ = require('lodash');
 //  	//console.log(JSON.stringify(connectedStreams));
 // };
 
-var activateBeacon = function(event, mongoClient, sensor){
-	var updateQuery = {
+var activateBeacon = function(event, sensorsCollection, sensor){
+	console.log('activating beacon ' + sensor.url);
+	var condition = {
 		url: sensor.url
 	};
 
-	var update = {
+	var operation = {
 		$set: {
 			active: true
 		}
 	};
 
-	mongoClient.sensors.update(updateQuery, update);
+	var options  = {
+		upsert: true
+	}
+
+	sensorsCollection.update(condition, operation, options, function(err, res){
+		if(err){
+			console.log(err);
+		} 
+		else{
+			console.log('Wrote to the database ' + res);
+		}
+
+	});
 };
 
-var getSensor = function(event, mongoClient){
+var getSensor = function(event, sensorsCollection, callback){
 	var sensorUrl = [
 		'ibeacon:/', 
 		event.properties.regionId, 
@@ -58,39 +71,44 @@ var getSensor = function(event, mongoClient){
 		url: sensorUrl
 	};
 
-	var result = mongoClient.sensors.find(condition);
-	if(result === null){
-		result = {
-			url: sensorUrl, 
-			streamid: event.streamid, 
-			active: false,
-			connectedStreamIds: {}
-		};
-	}
+	sensorsCollection.find(condition).toArray(function(err, docs){
+		//console.log(docs);
+		var result;
+		if(docs.length === 0){
+			result = {
+				url: sensorUrl, 
+				streamid: event.streamid, 
+				active: false,
+				connectedStreamIds: {}
+			};
+		}
+		else{
+			result = docs[0];
+		}
 
-	return result;
+		console.log(result);
+		callback(result);
+	});
 };
 
-var processMessage = function(event, mongoClient){
+var processMessage = function(event, sensorsCollection){
 	console.log(event.objectTags);
 	var isProximity = _.indexOf(event.objectTags, 'proximity') >= 0; 
 	if(isProximity){
-		var sensor = getSensor(event, mongoClient);
-		console.log(sensor);
+		getSensor(event, sensorsCollection, function(sensor){
+			// check for enter and exit events
+			var intersection = _.intersection(event.actionTags, ['enter', 'exit']);
+			if(intersection[0] === 'enter'){
+				//link(event.streamid, event.properties.regionId);
+			} else if (intersection[0] === 'exit'){
+				//unlink(event.streamid, event.properties.regionId);
+			}
 
-		// check for enter and exit events
-		var intersection = _.intersection(event.actionTags, ['enter', 'exit']);
-		if(intersection[0] === 'enter'){
-			//link(event.streamid, event.properties.regionId);
-		} else if (intersection[0] === 'exit'){
-			//unlink(event.streamid, event.properties.regionId);
-		}
-
-		var startStopIntersection = _.intersection(event.actionTags, ['start']);
-		if(startStopIntersection[0] === 'start'){
-			
-			activateBeacon(event, mongoClient, sensor);
-		}
+			var startStopIntersection = _.intersection(event.actionTags, ['start']);
+			if(startStopIntersection[0] === 'start'){
+				activateBeacon(event, sensorsCollection, sensor);
+			}
+		});
 	}
 };
 
