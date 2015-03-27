@@ -2,6 +2,7 @@
 var assert = require('assert');
 var proximity = require('../processor');
 
+
 describe('proximity node module', function () {
   it('ignores non proximity events', function () {
   	var event = {

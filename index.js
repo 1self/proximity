@@ -15,6 +15,8 @@ winston.warn("Warns will be logged here");
 winston.info("Info will be logged here");
 winston.debug("Debug will be logged here");
 
+processor.setLogger(winston);
+
 var eventSubscription = redis.createClient();
 eventSubscription.subscribe('events');
 
@@ -27,7 +29,7 @@ MongoClient.connect(url, function(err, db) {
 		console.log(err);
 	}
 	eventSubscription.on('message', function(channel, message){
-		console.log("subcrising to events");
+		winston.debug("message recieved from channel " + channel);
 		var event = JSON.parse(message);
 		processor.processMessage(event, db.collection('sensors'));
 	});
