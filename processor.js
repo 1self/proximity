@@ -35,7 +35,7 @@ var activateBeacon = function(event, sensorsCollection, sensor){
 
 	sensorsCollection.update(condition, operation, options, function(err, res){
 		if(err){
-			logger.error(err);
+			logger.error('error updating sensor', err);
 		} 
 		else{
 			logger.verbose('Wrote to the database ' + res);
@@ -66,10 +66,10 @@ var deactivateBeacon = function(event, sensorsCollection, sensor){
 
 	sensorsCollection.update(condition, operation, options, function(err, res){
 		if(err){
-			logger.error(err);
+			logger.error('error updating sensor', err);
 		} 
 		else{
-			logger.verbose('Wrote to the database ', res);
+			logger.verbose('Wrote to the database ' + res);
 		}
 
 	});
@@ -87,9 +87,14 @@ var getSensor = function(event, sensorsCollection, callback){
 
 	logger.debug('find with condition ', condition);
 	sensorsCollection.find(condition).toArray(function(err, docs){
+		if(err){
+			logger.error('error finding sensor', err);
+			return;
+		}
+
 		var result;
 		if(docs.length === 0){
-			logger.verbose('beacon not found, creating', sensorUrl)
+			logger.verbose('beacon not found, creating', sensorUrl);
 			result = {
 				url: sensorUrl, 
 				streamid: event.streamid, 
