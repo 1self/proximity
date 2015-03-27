@@ -138,10 +138,29 @@ describe('proximity node module', function () {
 
   	proximity.processMessage(beaconStop, sensors);
 
-    assert(stopDeactivates, 'Beacon stop doesn\'t cause deactivation');
+    assert(stopDeactivates, 'Beacon stop doesnt cause deactivation');
    });
 });
 
+// entering an unknown beacon does not cause an attach
+// exiting an unknown beacon does not cause detach
+// entering known beacon attaches it
+// exiting a known beacon detaches it
+// attached streams are persisted between application runs
+
+describe('proximity node module', function () {
+  it('active sensor data is copied', function () {
+  	//assert(false);
+  });
+});
+
+describe('proximity node module', function () {
+  it('active sensor state is persisted between app execution', function () {
+  	//assert(false);
+  });
+});
+
+// to 
 describe('proximity node module', function () {
   // it('enter event causes stream to be stored against regionId', function () {
   // 	var beaconStart = {

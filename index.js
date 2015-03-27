@@ -24,14 +24,20 @@ eventSubscription.subscribe('events');
 var url = 'mongodb://localhost:27017/quantifieddev';
 // Use connect method to connect to the Server
 MongoClient.connect(url, function(err, db) {
+
 	console.log('connected to db');
 	if(err){
 		console.log(err);
 	}
-	eventSubscription.on('message', function(channel, message){
-		winston.debug("message recieved from channel " + channel);
-		var event = JSON.parse(message);
-		processor.processMessage(event, db.collection('sensors'));
+
+	var sensors = db.collection('sensors');
+
+	processor.loadSensors(sensors, function() {
+		eventSubscription.on('message', function(channel, message){
+			winston.debug("message recieved from channel " + channel);
+			var event = JSON.parse(message);
+			processor.processMessage(event, sensors);
+		});
 	});
 });
 
