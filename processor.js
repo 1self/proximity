@@ -96,16 +96,22 @@ var deactivateBeacon = function(event, sensorsCollection, sensor){
 	removeSensor(sensor);
 };
 
-var generateUrl = function(event){
-	return [
-		'ibeacon:/', 
-		event.properties.regionId, 
-		event.properties.major,
-		event.properties.minor].join('/');
+var getUrl = function(event){
+	var result = event.properties.geofence;
+
+	if(result === undefined){
+		result = [
+			'ibeacon:/', 
+			event.properties.regionId, 
+			event.properties.major,
+			event.properties.minor].join('/');
+	}
+
+	return result;
 };
 
 var getSensor = function(event, sensorsCollection, callback){
-	var sensorUrl = generateUrl(event);
+	var sensorUrl = getUrl(event);
 	var condition = {
 		url: sensorUrl
 	};
@@ -125,7 +131,39 @@ var getSensor = function(event, sensorsCollection, callback){
 				url: sensorUrl, 
 				streamid: event.streamid, 
 				active: false,
-				connectedStreamIds: {}
+				attached: {}
+			};
+		}
+		else{
+			result = docs[0];
+		}
+
+		callback(result);
+	});
+};
+
+var getSensor = function(event, sensorsCollection, callback){
+	var sensorUrl = getUrl(event);
+	var condition = {
+		url: sensorUrl
+	};
+
+	logger.debug('find with condition ', condition);
+	sensorsCollection.find(condition).toArray(function(err, docs){
+		if(err){
+			logger.error('error finding sensor', err);
+			return;
+		}
+
+		var result;
+		if(docs.length === 0){
+			logger.verbose('beacon not found, creating', sensorUrl);
+			logger.debug('streamid is ' + event.streamid);
+			result = {
+				url: sensorUrl, 
+				streamid: event.streamid, 
+				active: false,
+				attached: {}
 			};
 		}
 		else{
@@ -137,7 +175,7 @@ var getSensor = function(event, sensorsCollection, callback){
 };
 
 var attach = function(event, sensorsCollection){
-	var url = generateUrl(event);
+	var url = event.properties.geofence;
 	var sensor = activeSensors[url];
 
 	logger.verbose('looking up sensor ' + sensor.url);
@@ -183,7 +221,7 @@ var attach = function(event, sensorsCollection){
 };
 
 var detach = function(event, sensorsCollection){
-	var url = generateUrl(event);
+	var url = event.properties.geofence;
 	var sensor = activeSensors[url];
 
 	logger.verbose('looking up sensor ' + sensor.url);
@@ -193,14 +231,13 @@ var detach = function(event, sensorsCollection){
 	}
 
 	logger.verbose('found the sensor', sensor);
-	if(sensor.attached === undefined){
+	if(sensor.attached === {}){
 		logger.verbose('nothing attached');
-		return;
-	}
+	} 
 
-	delete sensor.attached[event.streamid];
+	delete sensor.attached[event.streamid];	
 	logger.verbose('stream detached', sensor);
-
+	
 	var condition = {
 		url: sensor.url
 	};
@@ -252,6 +289,12 @@ var processMessage = function(event, sensorsCollection){
 				deactivateBeacon(event, sensorsCollection, sensor);
 			}
 
+		});
+	}
+	else if(event.properties.geofence !== undefined){
+		logger.verbose("event has geofence");
+		getSensor(event, sensorsCollection, function(sensor){
+			activateBeacon(event, sensorsCollection, sensor);
 		});
 	}
 	else {
