@@ -264,7 +264,8 @@ var detach = function(event, sensorsCollection){
 	});
 };
 
-var processMessage = function(event, sensorsCollection){
+var processMessage = function(event, sensorsCollection, eventRepository){
+	logger.info('process message!');
 	var isProximity = _.indexOf(event.objectTags, 'proximity') >= 0; 
 	if(isProximity){
 		logger.verbose("proximity event received");
@@ -274,19 +275,23 @@ var processMessage = function(event, sensorsCollection){
 			var intersection = _.intersection(event.actionTags, ['enter', 'exit']);
 			if(intersection[0] === 'enter'){
 				attach(event, sensorsCollection);
+				logger.info(event.streamid + ' enter ' + event.properties.geofence);
 			} else if (intersection[0] === 'exit'){
 				detach(event, sensorsCollection);
+				logger.info(event.streamid + ' exit ' + event.properties.geofence);
 			}
 
 			var startStopIntersection = _.intersection(event.actionTags, ['start', 'stop']);
 			if(startStopIntersection[0] === 'start'){
 				logger.verbose("event is proximity start");
 				activateBeacon(event, sensorsCollection, sensor);
+				logger.info('start ' + event.properties.geofence);
 			}
 
 			if(startStopIntersection[0] === 'stop'){
 				logger.verbose("event is proximity stop");
 				deactivateBeacon(event, sensorsCollection, sensor);
+				logger.info('stop ' + event.properties.geofence);
 			}
 
 		});
@@ -296,6 +301,9 @@ var processMessage = function(event, sensorsCollection){
 		getSensor(event, sensorsCollection, function(sensor){
 			activateBeacon(event, sensorsCollection, sensor);
 		});
+	}
+	else if(isSensorData(event)){
+		copyToAttachedStream();
 	}
 	else {
 		logger.debug("event " + event.objectTags + " ignored");

@@ -7,6 +7,7 @@ var redis = require('redis');
 var processor = require('./processor');
 var MongoClient = require('mongodb').MongoClient;
 var winston = require('winston');
+var eventRepository = require('./eventRepository');
 
 winston.add(winston.transports.File, { filename: 'proximity.log', level: 'debug', json: false });
 
@@ -36,7 +37,7 @@ MongoClient.connect(url, function(err, db) {
 		eventSubscription.on('message', function(channel, message){
 			winston.debug("message recieved from channel " + channel);
 			var event = JSON.parse(message);
-			processor.processMessage(event, sensors);
+			processor.processMessage(event, sensors, eventRepository);
 		});
 	});
 });
