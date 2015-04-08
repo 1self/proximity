@@ -7,7 +7,6 @@ var redis = require('redis');
 var processor = require('./processor');
 var MongoClient = require('mongodb').MongoClient;
 var winston = require('winston');
-var eventRepository = require('./eventRepository');
 
 winston.add(winston.transports.File, { filename: 'proximity.log', level: 'debug', json: false });
 
@@ -18,8 +17,13 @@ winston.debug("Debug will be logged here");
 
 processor.setLogger(winston);
 
-var eventSubscription = redis.createClient();
-eventSubscription.subscribe('events');
+var redisClient = redis.createClient();
+redisClient.subscribe('events');
+
+var eventRepository = {};
+eventRepository.add = function(event){
+	redisClient.publish('events', JSON.stringify(event));
+};
 
 // Connection URL
 var url = 'mongodb://localhost:27017/quantifieddev';
@@ -34,7 +38,7 @@ MongoClient.connect(url, function(err, db) {
 	var sensors = db.collection('sensors');
 
 	processor.loadSensors(sensors, function() {
-		eventSubscription.on('message', function(channel, message){
+		redisClient.on('message', function(channel, message){
 			winston.debug("message recieved from channel " + channel);
 			var event = JSON.parse(message);
 			processor.processMessage(event, sensors, eventRepository);

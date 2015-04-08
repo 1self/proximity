@@ -15,10 +15,19 @@ winston.debug('Debug messages will be logged in processor');
 
 var activeSensors = {};
 
-
 var addSensor = function(sensor){
+	if(activeSensors[sensor.url] !== undefined){
+		return;
+	}
+
 	logger.debug('sensor added to active sensor map', JSON.stringify(sensor));
 	activeSensors[sensor.url] = sensor;
+	var urlParts = sensor.url.split('/');
+	for (var i = 3; i < urlParts.length; i++) {
+		var subUrl = _.slice(urlParts, 0, i).join('/');
+		logger.debug(subUrl);
+		activeSensors[subUrl] = sensor;
+	}
 	logger.debug('active sensors are', activeSensors);
 };
 
@@ -97,7 +106,7 @@ var deactivateBeacon = function(event, sensorsCollection, sensor){
 };
 
 var getUrl = function(event){
-	var result = event.properties.geofence;
+	var result = event.geofence;
 
 	if(result === undefined){
 		result = [
@@ -142,45 +151,12 @@ var getSensor = function(event, sensorsCollection, callback){
 	});
 };
 
-var getSensor = function(event, sensorsCollection, callback){
-	var sensorUrl = getUrl(event);
-	var condition = {
-		url: sensorUrl
-	};
-
-	logger.debug('find with condition ', condition);
-	sensorsCollection.find(condition).toArray(function(err, docs){
-		if(err){
-			logger.error('error finding sensor', err);
-			return;
-		}
-
-		var result;
-		if(docs.length === 0){
-			logger.verbose('beacon not found, creating', sensorUrl);
-			logger.debug('streamid is ' + event.streamid);
-			result = {
-				url: sensorUrl, 
-				streamid: event.streamid, 
-				active: false,
-				attached: {}
-			};
-		}
-		else{
-			result = docs[0];
-		}
-
-		callback(result);
-	});
-};
-
 var attach = function(event, sensorsCollection){
 	var url = event.properties.geofence;
 	var sensor = activeSensors[url];
 
-	logger.verbose('looking up sensor ' + sensor.url);
 	if(sensor === undefined){
-		logger.verbose('unknown sensor url');
+		logger.verbose('unknown sensor url: ' + url);
 		return;
 	}
 
@@ -224,7 +200,6 @@ var detach = function(event, sensorsCollection){
 	var url = event.properties.geofence;
 	var sensor = activeSensors[url];
 
-	logger.verbose('looking up sensor ' + sensor.url);
 	if(sensor === undefined){
 		logger.verbose('unknown sensor url');
 		return;
@@ -264,6 +239,26 @@ var detach = function(event, sensorsCollection){
 	});
 };
 
+var isSensorData = function(event){
+	return event.geofence !== undefined;
+};
+
+var copyToAttachedStream = function(event, eventRepository){
+	var sensor = activeSensors[event.geofence];
+	var copyToAttached = function(value, key){
+		var newEvent = _.merge(event, {});
+		newEvent.streamid = key;
+		newEvent.originalGeofence = newEvent.geofence;
+		delete newEvent.geofence;
+		logger.verbose('new event for ' + newEvent.streamid + ': ');
+		logger.debug(newEvent);
+		eventRepository.add(newEvent);
+	};
+
+	logger.debug('copying event to attached streams', sensor.attached);
+	_.forOwn(sensor.attached, copyToAttached);
+};
+
 var processMessage = function(event, sensorsCollection, eventRepository){
 	logger.info('process message!');
 	var isProximity = _.indexOf(event.objectTags, 'proximity') >= 0; 
@@ -296,18 +291,18 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 
 		});
 	}
-	else if(event.properties.geofence !== undefined){
-		logger.verbose("event has geofence");
+	
+	if(event.geofence !== undefined){
+		logger.info("event has geofence");
 		getSensor(event, sensorsCollection, function(sensor){
 			activateBeacon(event, sensorsCollection, sensor);
 		});
 	}
-	else if(isSensorData(event)){
-		copyToAttachedStream();
+	
+	if(isSensorData(event)){
+		copyToAttachedStream(event, eventRepository);
 	}
-	else {
-		logger.debug("event " + event.objectTags + " ignored");
-	}
+	
 };
 
 var loadSensors = function(sensorsCollection, callback){
@@ -330,6 +325,12 @@ var loadSensors = function(sensorsCollection, callback){
 	});
 };
 
+// used for testing
+var reset = function(){
+	activeSensors = {};
+};
+
 module.exports.processMessage = processMessage;
 module.exports.setLogger = setLogger;
 module.exports.loadSensors = loadSensors;
+module.exports.reset = reset;
