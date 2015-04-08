@@ -17,12 +17,13 @@ winston.debug("Debug will be logged here");
 
 processor.setLogger(winston);
 
-var redisClient = redis.createClient();
-redisClient.subscribe('events');
+var redisSubscribe = redis.createClient();
+var redisPublish = redis.createClient();
+redisSubscribe.subscribe('events');
 
 var eventRepository = {};
 eventRepository.add = function(event){
-	redisClient.publish('events', JSON.stringify(event));
+	redisPublish.publish('eventstore', JSON.stringify(event));
 };
 
 // Connection URL
@@ -38,7 +39,7 @@ MongoClient.connect(url, function(err, db) {
 	var sensors = db.collection('sensors');
 
 	processor.loadSensors(sensors, function() {
-		redisClient.on('message', function(channel, message){
+		redisSubscribe.on('message', function(channel, message){
 			winston.debug("message recieved from channel " + channel);
 			var event = JSON.parse(message);
 			processor.processMessage(event, sensors, eventRepository);

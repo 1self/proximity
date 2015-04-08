@@ -5,7 +5,7 @@ var winston = require('winston');
 
 var logger = winston;
 var setLogger = function(anotherLogger){
-	anotherLogger.info('processor logger updated', anotherLogger);
+	anotherLogger.info('processor logger updated');
 	logger = anotherLogger;
 }; // this can be called outside the module to set the logger
 
@@ -121,6 +121,8 @@ var getUrl = function(event){
 
 var getSensor = function(event, sensorsCollection, callback){
 	var sensorUrl = getUrl(event);
+	logger.debug('sensorUrl is ' + sensorUrl);
+
 	var condition = {
 		url: sensorUrl
 	};
@@ -296,13 +298,9 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 		logger.info("event has geofence");
 		getSensor(event, sensorsCollection, function(sensor){
 			activateBeacon(event, sensorsCollection, sensor);
+			copyToAttachedStream(event, eventRepository);
 		});
-	}
-	
-	if(isSensorData(event)){
-		copyToAttachedStream(event, eventRepository);
-	}
-	
+	}	
 };
 
 var loadSensors = function(sensorsCollection, callback){
