@@ -241,10 +241,6 @@ var detach = function(event, sensorsCollection){
 	});
 };
 
-var isSensorData = function(event){
-	return event.geofence !== undefined;
-};
-
 var copyToAttachedStream = function(event, eventRepository){
 	var sensor = activeSensors[event.geofence];
 	var copyToAttached = function(value, key){
