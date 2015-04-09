@@ -16,6 +16,7 @@ winston.debug('Debug messages will be logged in processor');
 var activeSensors = {};
 
 var addSensorUrls = function(url, sensor){
+	logger.debug('adding sensor for ', url);
 	activeSensors[url] = sensor;
 	var urlParts = url.split('/');
 	for (var i = 3; i < urlParts.length; i++) {
@@ -31,12 +32,15 @@ var addSensor = function(sensor){
 	}
 
 	logger.debug('sensor added to active sensor map', JSON.stringify(sensor));
-	addSensorUrls(sensor.url, sensor);
+	var urlParts = sensor.url.split('/');
+	urlParts[2] = urlParts[2].toUpperCase();
+	logger.debug('urlparts', urlParts);
+	addSensorUrls(urlParts.join('/'), sensor);
 
 	// some devices send up guids with lower case, so add
 	// a mapping for lower case urls.
-	var lowerCaseUrl = sensor.url.toLowerCase();
-	addSensorUrls(lowerCaseUrl, sensor);
+	urlParts[2] = urlParts[2].toLowerCase();
+	addSensorUrls(urlParts.join('/'), sensor);
 
 	logger.debug('active sensors are', activeSensors);
 };
@@ -164,7 +168,9 @@ var getSensor = function(event, sensorsCollection, callback){
 };
 
 var attach = function(event, sensorsCollection){
-	var url = event.properties.geofence;
+	//eas: the geosense app currently in review at the app store has geofenceUrl in the 
+	// property. Once we have updated the app we can remove this.
+	var url = event.properties.geofence || event.properties.geofenceUrl;
 	var sensor = activeSensors[url];
 
 	if(sensor === undefined){
