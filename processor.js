@@ -276,6 +276,10 @@ var copyToAttachedStream = function(event, eventRepository){
 var processMessage = function(event, sensorsCollection, eventRepository){
 	logger.info('process message!');
 	var isProximity = _.indexOf(event.objectTags, 'proximity') >= 0; 
+	if(isProximity === false){
+		isProximity = _.indexOf(event.objectTags, 'geofence') >= 0; 
+	}
+
 	if(isProximity){
 		logger.verbose("proximity event received");
 		logger.debug("event details: ", event);

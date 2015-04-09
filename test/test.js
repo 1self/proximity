@@ -744,6 +744,84 @@ describe('proximity node module', function () {
    });
 });
 
+describe('proximity node module', function () {
+  it('geofence is used to detect proximity events', function () {
+  	proximity.reset();
+
+  	console.log('');
+  	console.log('==================================================');
+  	console.log('test: geofence is used to detect proximity events');
+  	console.log('==================================================');
+
+    var sensors = {};
+
+    console.log(sensors);
+
+    sensors.update = function(){
+
+    };
+
+    sensors.find = function(){
+      var result = {};
+      result.toArray = function(callback){
+        callback(null, []);
+      };
+      return result;
+    };
+
+    sensors.update = function(){};
+
+    var geofenceSensorReading1 = { 
+      streamid: "2222",
+      objectTags:['ambient', 'temperature'],
+      actionTags:['sample'],
+      dateTime: "2015-04-08T09:25.000+01:00",
+      geofence: "ibeacon://AAAAAAAAAAAAAA/1/1",
+      properties:{
+        celsius: 23
+      }
+    };
+
+    console.log('test: process reading 1');
+
+    proximity.processMessage(geofenceSensorReading1, sensors);
+
+    var geofenceEnter = { 
+      streamid: "1111",
+      objectTags:['geofence', 'ibeacon'],
+      actionTags:['enter'],
+      properties:{
+        geofenceUrl: 'ibeacon://AAAAAAAAAAAAAA'
+      }
+    };
+
+    proximity.processMessage(geofenceEnter, sensors);    
+
+    var geofenceSensorReading2 = { 
+      streamid: "2222",
+      objectTags:['ambient', 'temperature'],
+      actionTags:['sample'],
+      dateTime: "2015-04-08T09:30.000+01:00",
+      geofence: "ibeacon://AAAAAAAAAAAAAA/1/1",
+      properties:{
+        celsius: 23
+      }
+    };
+
+	var eventCopied;
+    var events = {};
+    events.add = function(event){
+      eventCopied = event;
+      logger.info('event added');
+  	};
+    
+    logger.info(events);
+    logger.info(eventCopied);
+    proximity.processMessage(geofenceSensorReading2, sensors, events);
+    assert(eventCopied !== undefined, 'The event wasnt copied');
+   });
+});
+
 
 // events are not copied once a user leaves a geofence
 
