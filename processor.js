@@ -15,19 +15,29 @@ winston.debug('Debug messages will be logged in processor');
 
 var activeSensors = {};
 
+var addSensorUrls = function(url, sensor){
+	activeSensors[url] = sensor;
+	var urlParts = url.split('/');
+	for (var i = 3; i < urlParts.length; i++) {
+		var subUrl = _.slice(urlParts, 0, i).join('/');
+		logger.debug(subUrl);
+		activeSensors[subUrl] = sensor;
+	}
+};
+
 var addSensor = function(sensor){
 	if(activeSensors[sensor.url] !== undefined){
 		return;
 	}
 
 	logger.debug('sensor added to active sensor map', JSON.stringify(sensor));
-	activeSensors[sensor.url] = sensor;
-	var urlParts = sensor.url.split('/');
-	for (var i = 3; i < urlParts.length; i++) {
-		var subUrl = _.slice(urlParts, 0, i).join('/');
-		logger.debug(subUrl);
-		activeSensors[subUrl] = sensor;
-	}
+	addSensorUrls(sensor.url, sensor);
+
+	// some devices send up guids with lower case, so add
+	// a mapping for lower case urls.
+	var lowerCaseUrl = sensor.url.toLowerCase();
+	addSensorUrls(lowerCaseUrl, sensor);
+
 	logger.debug('active sensors are', activeSensors);
 };
 

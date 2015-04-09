@@ -450,6 +450,69 @@ describe('proximity node module', function () {
    });
 });
 
+describe('proximity node module', function () {
+  it('geofence urls are matched in a case insensitive way', function () {
+  	proximity.reset();
+
+  	console.log('');
+  	console.log('==================================================');
+  	console.log('test: any event with geofence property is considered for copying');
+  	console.log('==================================================');
+
+    var sensors = {};
+
+    console.log(sensors);
+
+    sensors.update = function(){
+
+    };
+
+    sensors.find = function(){
+      var result = {};
+      result.toArray = function(callback){
+        callback(null, []);
+      };
+      return result;
+    };
+
+    
+
+    var geofenceSensorReading1 = { 
+      streamid: "2222",
+      objectTags:['ambient', 'temperature'],
+      actionTags:['sample'],
+      dateTime: "2015-04-08T09:25.000+01:00",
+      geofence: "ibeacon://AAAAAAAAAAAAAA/1/1",
+      properties:{
+        celsius: 23
+      }
+    };
+
+    console.log('test: process reading 1');
+
+    proximity.processMessage(geofenceSensorReading1, sensors);
+
+    var beaconAttached = false;
+    sensors.update = function(){
+    	beaconAttached = true;
+    };
+
+    var geofenceEnter = { 
+      streamid: "1111",
+      objectTags:['proximity', 'ibeacon'],
+      actionTags:['enter'],
+      properties:{
+        geofence: 'ibeacon://aaaaaaaaaaaaaa'
+      }
+    };
+
+    proximity.processMessage(geofenceEnter, sensors);    
+
+    assert(beaconAttached, 'update to the attached streams was not called');
+    
+   });
+});
+
 // events are not copied once a user leaves a geofence
 
 // entering an unknown beacon does not cause an attach
