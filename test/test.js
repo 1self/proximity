@@ -1157,7 +1157,7 @@ describe('proximity node module', function() {
 });
 
 describe('proximity node module', function() {
-    it('attaching to a sensor logs a sensor data message', function() {
+    it('entering sensor proximity causes last sensor value to be copied', function() {
         proximity.reset();
 
         var sensors = {};
@@ -1267,7 +1267,8 @@ describe('proximity node module', function() {
 
        
         proximity.processMessage(region1Enter, sensors, events);
-        assert(eventCopied !== undefined, 'Didnt copy event on attach');
+        logger.info('event copied is ', eventCopied);
+        assert(eventCopied.streamid === '5678', 'Didnt copy event on attach');
     });
 });
 

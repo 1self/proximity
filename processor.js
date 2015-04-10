@@ -213,12 +213,15 @@ var copyCachedEvent = function(event, sensor, eventRepository){
 
 	var copyToAttached = function(value){
 		var newEvent = {};
-		_.merge(newEvent, event);
-		newEvent.streamid = value.streamid;
-		newEvent.originalGeofence = newEvent.geofence;
+		_.merge(newEvent, value);
+		newEvent.streamid = event.streamid;
+		newEvent.originalGeofence = value.geofence || value.properties.geofence || value.properties.geofenceUrl;
 		delete newEvent.geofence;
 		logger.verbose('new event for ' + newEvent.streamid + ': ');
 		logger.debug(newEvent);
+		newEvent.dateTime = event.dateTime;
+		newEvent.eventDateTime = event.eventDateTime;
+		newEvent.eventLocalDateTime = event.eventLocalDateTime;
 		eventRepository.add(newEvent);
 	};
 
