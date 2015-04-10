@@ -85,6 +85,47 @@ var activateBeacon = function(event, sensorsCollection, sensor){
 	addSensor(sensor);
 };
 
+var cacheLastEvent = function(event, sensorsCollection, sensor){
+	var key = event.objectTags.join('-') + '-' + event.actionTags.join('-');
+	logger.debug('caching event using key: ' + key);
+
+	var cachedEvent = {};
+	_.merge(cachedEvent, event);
+	cachedEvent.eventDateTime = new Date(cachedEvent.eventDateTime.$date);
+	cachedEvent.eventLocalDateTime = new Date(cachedEvent.eventLocalDateTime.$date);
+	
+	if(sensor.cachedEvents === undefined){
+		sensor.cachedEvents = {};
+	}
+
+	sensor.cachedEvents[key] = cachedEvent;
+
+	logger.debug('sensor is', JSON.stringify(sensor));
+
+	var condition = {
+		url: sensor.url
+	};
+
+	var set = {};
+	set['cachedEvents.' + key] = cachedEvent;
+	logger.debug('cached events', set);
+
+	var operation = {
+		$set: set
+	};
+	logger.debug(JSON.stringify(operation));
+
+	sensorsCollection.update(condition, operation, {}, function(err, res){
+		if(err){
+			logger.error('error updating sensor', err);
+		} 
+		else{
+			logger.verbose('Wrote to the database ' + res);
+		}
+
+	});
+};
+
 var deactivateBeacon = function(event, sensorsCollection, sensor){
 	var condition = {
 		url: sensor.url
@@ -120,7 +161,7 @@ var deactivateBeacon = function(event, sensorsCollection, sensor){
 };
 
 var getUrl = function(event){
-	var result = event.geofence;
+	var result = event.geofence || event.properties.geofence;
 
 	if(result === undefined){
 		result = [
@@ -156,7 +197,8 @@ var getSensor = function(event, sensorsCollection, callback){
 				url: sensorUrl, 
 				streamid: event.streamid, 
 				active: false,
-				attached: {}
+				attached: {},
+				cachedEvents: {}
 			};
 		}
 		else{
@@ -165,6 +207,23 @@ var getSensor = function(event, sensorsCollection, callback){
 
 		callback(result);
 	});
+};
+
+var copyCachedEvent = function(event, sensor, eventRepository){
+
+	var copyToAttached = function(value){
+		var newEvent = {};
+		_.merge(newEvent, event);
+		newEvent.streamid = value.streamid;
+		newEvent.originalGeofence = newEvent.geofence;
+		delete newEvent.geofence;
+		logger.verbose('new event for ' + newEvent.streamid + ': ');
+		logger.debug(newEvent);
+		eventRepository.add(newEvent);
+	};
+
+	logger.debug('copying cached events', sensor.cachedEvents);
+	_.forOwn(sensor.cachedEvents, copyToAttached);
 };
 
 var attach = function(event, sensorsCollection){
@@ -212,6 +271,7 @@ var attach = function(event, sensorsCollection){
 		}
 
 	});
+
 };
 
 var detach = function(event, sensorsCollection){
@@ -288,6 +348,7 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 			var intersection = _.intersection(event.actionTags, ['enter', 'exit']);
 			if(intersection[0] === 'enter'){
 				attach(event, sensorsCollection);
+				copyCachedEvent(event, sensor, eventRepository);
 				logger.info(event.streamid + ' enter ' + event.properties.geofence);
 			} else if (intersection[0] === 'exit'){
 				detach(event, sensorsCollection);
@@ -314,6 +375,7 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 		logger.info("event has geofence");
 		getSensor(event, sensorsCollection, function(sensor){
 			activateBeacon(event, sensorsCollection, sensor);
+			cacheLastEvent(event, sensorsCollection, sensor);
 			copyToAttachedStream(event, eventRepository);
 		});
 	}	
