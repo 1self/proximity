@@ -380,7 +380,7 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 			if(intersection[0] === 'enter'){
 				attach(event, sensor, sensorsCollection);
 				copyCachedEvent(event, sensor, eventRepository);
-				logger.info(event.streamid + ' enter ' + event.properties.geofence);
+				logger.info(event.streamid + ' enter ' + getUrl(event));
 			} else if (intersection[0] === 'exit'){
 				detach(event, sensorsCollection);
 				logger.info(event.streamid + ' exit ' + event.properties.geofence);
@@ -431,10 +431,10 @@ var loadSensors = function(sensorsCollection, callback){
 		for (var i = docs.length - 1; i >= 0; i--) {
 			var sensor = docs[i];
 			var sensorUrl = sensor.url.toUpperCase();
-			activeSensors[sensor.url] = sensor;
+			activeSensors[sensorUrl] = sensor;
 		}
 
-		logger.info('loaded sensors from database', activeSensors)
+		logger.info('loaded sensors from database', activeSensors);
 
 		callback();
 	});

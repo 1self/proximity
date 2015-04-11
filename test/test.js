@@ -96,12 +96,6 @@ describe('proximity node module', function() {
 		assert(conditions[0].url === 'IBEACON://REGION1/1/1', 'condition for full url incorrect');
 		assert(operations[0].$set.active === true, 'operation for full url did not set active true');
 		assert(options[0].upsert === true, 'upsert not set for full url');
-		assert(conditions[1].url === 'IBEACON://REGION1', 'condition for uuid only url incorrect');
-		assert(operations[1].$set.active === true, 'operation for uuid only url did not set active true');
-		assert(options[1].upsert === true, 'upsert not set for uuid only url');
-		assert(conditions[2].url === 'IBEACON://REGION1/1', 'condition for uuid and major url incorrect');
-		assert(operations[2].$set.active === true, 'operation for uuid and major url did not set active true');
-		assert(options[2].upsert === true, 'upsert not set for uuid and major url');
     });
 });
 
@@ -139,7 +133,7 @@ describe('proximity node module', function() {
 
         proximity.setLogger(logger);
         proximity.processMessage(beaconExit, sensors);
-        assert(updateCalled === false, 'update was called');
+        assert(updateCalled === true, 'update was not called');
     });
 });
 
@@ -658,16 +652,39 @@ describe('proximity node module', function() {
         };
 
         sensors.find = function() {
-            var result = {};
-            result.toArray = function(callback) {
-                callback(null, []);
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
             };
-            return result;
+
+            var result = {
+                url: 'ibeacon://AAAAAAAAAAAAAA',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
         };
 
         sensors.update = function() {};
 
         var events = {};
+        var eventCopied;
         events.add = function(event) {
             eventCopied = event;
             
@@ -731,10 +748,7 @@ describe('proximity node module', function() {
             }
         };
 
-        var eventCopied;
-
         tlog.info(events);
-        
         tlog.info(eventCopied);
         proximity.processMessage(geofenceSensorReading2, sensors, events);
         assert(eventCopied !== undefined, 'The event wasnt copied');
@@ -764,11 +778,33 @@ describe('proximity node module', function() {
         };
 
         sensors.find = function() {
-            var result = {};
-            result.toArray = function(callback) {
-                callback(null, []);
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
             };
-            return result;
+
+            var result = {
+                url: 'ibeacon://AAAAAAAAAAAAAA',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
         };
 
         sensors.update = function() {};
@@ -982,13 +1018,9 @@ describe('proximity node module', function() {
 
         // updates to set the streamid etc are set first
         assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'beacon full url is incorrect');
-        assert(conditions[1].url === 'IBEACON://AAAAAAAAAAAAAA', 'beacon uuid url is incorrect');
-        assert(conditions[2].url === 'IBEACON://AAAAAAAAAAAAAA/1', 'beacon uuid and major url is incorrect');
 
         // then there should be an update for caching the event
-        assert(conditions[3].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'beacon full url is incorrect');
-        assert(conditions[4].url === 'IBEACON://AAAAAAAAAAAAAA', 'beacon uuid url is incorrect');
-        assert(conditions[5].url === 'IBEACON://AAAAAAAAAAAAAA/1', 'beacon uuid and major url is incorrect');
+        assert(conditions[1].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'beacon full url is incorrect');
         
         tlog.info('operation', operations);
         
@@ -997,15 +1029,10 @@ describe('proximity node module', function() {
         // first set stream ids etc
         assert(operations[0]['$set']['streamid'] === '2222', 'stream id not set for full url');
 
-        assert(operations[3]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
-        assert(operations[3]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
-        
-        assert(operations[4]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
-        assert(operations[4]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
+        assert(operations[1]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
+        assert(operations[1]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
 
-        assert(operations[5]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
-        assert(operations[5]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
-
+        assert(operations.length === 2, 'too many updates were called');
     });
 });
 
@@ -1098,9 +1125,9 @@ describe('proximity node module', function() {
         tlog.info(operations);
 
         assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'beacon url is incorrect');
-        assert(operations[3]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
-        assert(conditions[6].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'second beacon url is incorrect');
-        assert(operations[9]['$set']['cachedEvents.ambient-noise-sample'].streamid === '2222', 'second cachedEvents not saved properly');
+        assert(operations[1]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
+        assert(conditions[2].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'second beacon url is incorrect');
+        assert(operations[3]['$set']['cachedEvents.ambient-noise-sample'].streamid === '2222', 'second cachedEvents not saved properly');
 
 
     });
