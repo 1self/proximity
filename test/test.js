@@ -1636,7 +1636,7 @@ describe('proximity node module', function() {
 });
 
 describe('proximity node module', function() {
-    it('after the prox service is restarted, proximity enter events trigger a copy of the cached event', function() {
+    it('service restart: proximity enter event using geofence copies cached value', function() {
         proximity.reset();
 
         var sensors = {};
@@ -1692,7 +1692,7 @@ describe('proximity node module', function() {
             };
 
             var result = {
-                url: 'ibeacon://AAAAAAAAAAAAAA',
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
                 streamid: '2222',
                 active: false,
                 attached: {},
@@ -1711,6 +1711,339 @@ describe('proximity node module', function() {
         
         tlog.info('event copied is ', eventCopied);
         assert(eventCopied.streamid === '5678', 'Didnt copy event on attach');
+    });
+});
+
+describe('proximity node module', function() {
+    it('service restart: proximity enter event using geofenceUrl copies cached value', function() {
+        proximity.reset();
+
+        var sensors = {};
+
+        sensors.update = function() {};
+
+        sensors.find = function() {
+            var result = {};
+            result.toArray = function(callback) {
+                callback(null, []);
+            };
+            return result;
+        };
+
+        sensors.update = function() {};
+
+        var region1Enter = {
+            streamid: '5678',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['enter'],
+            properties: {
+                geofenceUrl: 'ibeacon://AAAAAAAAAAAAAA/1/1'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        var events = {};
+
+        var eventCopied;
+        events.add = function(event) {
+            eventCopied = event;
+        };
+
+
+        sensors.find = function() {
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
+            };
+
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+       
+        proximity.processMessage(region1Enter, sensors, events);
+        
+        tlog.info('event copied is ', eventCopied);
+        assert(eventCopied.streamid === '5678', 'Didnt copy event on attach');
+    });
+});
+
+describe('proximity node module', function() {
+    it('service restart: proximity enter event using lowercase geofence copies cached value', function() {
+        proximity.reset();
+
+        var sensors = {};
+
+        sensors.update = function() {};
+
+        sensors.find = function() {
+            var result = {};
+            result.toArray = function(callback) {
+                callback(null, []);
+            };
+            return result;
+        };
+
+        sensors.update = function() {};
+
+        var region1Enter = {
+            streamid: '5678',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['enter'],
+            properties: {               
+                geofenceUrl: 'ibeacon://aaaaaaaaaaaaaa/1/1'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        var events = {};
+
+        var eventCopied;
+        events.add = function(event) {
+            eventCopied = event;
+        };
+
+
+        sensors.find = function() {
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
+            };
+
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+       
+        proximity.processMessage(region1Enter, sensors, events);
+        
+        tlog.info('event copied is ', eventCopied);
+        assert(eventCopied.streamid === '5678', 'Didnt copy event on attach');
+        assert(eventCopied.objectTags[0] === 'ambient', 'Didnt copy event correctly');
+    });
+});
+
+describe('proximity node module', function() {
+    it('service restart: sensor readings are copied to attached streams', function() {
+        proximity.reset();
+
+        var sensors = {};
+
+        sensors.update = function() {};
+
+        var eventRepository = {};
+
+        var events = [];
+        eventRepository.add = function(event) {
+            events.push(event);
+        };
+
+        sensors.find = function() {
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {'1111': true},
+                cachedEvents: {}
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+        var geofenceSensorReading1 = {
+            streamid: '2222',
+            objectTags: ['ambient', 'temperature'],
+            actionTags: ['sample'],
+            dateTime: '2015-04-08T09:25.000+01:00',
+            geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+            properties: {
+                celsius: 23
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        proximity.processMessage(geofenceSensorReading1, sensors, eventRepository);
+        
+        tlog.info('event copied is ', events);
+        assert(events.length === 1, 'Number of events is incorrect');
+        assert(events[0].streamid === '1111', 'Didnt copy event on attach');
+        assert(events[0].objectTags[0] === 'ambient', 'Didnt copy event correctly');
+    });
+});
+
+describe('proximity node module', function() {
+    it('service restart: sensor readings are not copied to unattached streams', function() {
+        proximity.reset();
+
+        var sensors = {};
+
+        sensors.update = function() {};
+
+        var eventRepository = {};
+
+        var events = [];
+        eventRepository.add = function(event) {
+            events.push(event);
+        };
+
+        sensors.find = function() {
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: {}
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+        var geofenceSensorReading1 = {
+            streamid: '2222',
+            objectTags: ['ambient', 'temperature'],
+            actionTags: ['sample'],
+            dateTime: '2015-04-08T09:25.000+01:00',
+            geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+            properties: {
+                celsius: 23
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        proximity.processMessage(geofenceSensorReading1, sensors, eventRepository);
+        
+        tlog.info('event copied is ', events);
+        assert(events.length === 0, 'Number of events is incorrect');
+    });
+});
+
+describe('proximity node module', function() {
+    it('service restart: proximity exit causes unattach', function() {
+        proximity.reset();
+
+        var sensors = {};
+
+        var conditions = [];
+        var operations = [];
+        sensors.update = function(condition, operation) {
+        	conditions.push(condition);
+        	operations.push(operation);
+        };
+
+        var eventRepository = {};
+
+        var events = [];
+        eventRepository.add = function(event) {
+            events.push(event);
+        };
+
+        sensors.find = function() {
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {'1111': true},
+                cachedEvents: {}
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+        var region1Exit = {
+            streamid: '1111',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['exit'],
+            properties: {               
+                geofenceUrl: 'ibeacon://aaaaaaaaaaaaaa/1/1'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        proximity.processMessage(region1Exit, sensors, eventRepository);
+        
+        tlog.info('event copied is ', events);
+        assert(conditions.length === 1, 'incorrect number of updates called');
+        tlog.info('conditions', conditions);
+        tlog.info('operations', operations);
+        assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
+        assert(operations[0].$unset['attached.1111'] === '');
     });
 });
 
