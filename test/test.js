@@ -2047,7 +2047,129 @@ describe('proximity node module', function() {
     });
 });
 
+describe('proximity node module', function() {
+    it('service restart: proximity exit with uuid only geofenceUrl causes unattach', function() {
+        proximity.reset();
 
+        var sensors = {};
+
+        var conditions = [];
+        var operations = [];
+        sensors.update = function(condition, operation) {
+        	conditions.push(condition);
+        	operations.push(operation);
+        };
+
+        var eventRepository = {};
+
+        var events = [];
+        eventRepository.add = function(event) {
+            events.push(event);
+        };
+
+        sensors.find = function() {
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {'1111': true},
+                cachedEvents: {}
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+        var region1Exit = {
+            streamid: '1111',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['exit'],
+            properties: {               
+                geofenceUrl: 'ibeacon://aaaaaaaaaaaaaa'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        proximity.processMessage(region1Exit, sensors, eventRepository);
+        
+        tlog.info('event copied is ', events);
+        assert(conditions.length === 1, 'incorrect number of updates called');
+        tlog.info('conditions', conditions);
+        tlog.info('operations', operations);
+        assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
+        assert(operations[0].$unset['attached.1111'] === '');
+    });
+});
+
+describe('proximity node module', function() {
+    it('service restart: proximity exit with uuid only geofence causes unattach', function() {
+        proximity.reset();
+
+        var sensors = {};
+
+        var conditions = [];
+        var operations = [];
+        sensors.update = function(condition, operation) {
+        	conditions.push(condition);
+        	operations.push(operation);
+        };
+
+        var eventRepository = {};
+
+        var events = [];
+        eventRepository.add = function(event) {
+            events.push(event);
+        };
+
+        sensors.find = function() {
+            var result = {
+                url: 'IBEACON://AAAAAAAAAAAAAA/1/1',
+                streamid: '2222',
+                active: false,
+                attached: {'1111': true},
+                cachedEvents: {}
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+        var region1Exit = {
+            streamid: '1111',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['exit'],
+            properties: {               
+                geofence: 'ibeacon://aaaaaaaaaaaaaa'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        proximity.processMessage(region1Exit, sensors, eventRepository);
+        
+        tlog.info('event copied is ', events);
+        assert(conditions.length === 1, 'incorrect number of updates called');
+        tlog.info('conditions', conditions);
+        tlog.info('operations', operations);
+        assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
+        assert(operations[0].$unset['attached.1111'] === '');
+    });
+});
 // events are not copied once a user leaves a geofence
 
 // entering an unknown beacon does not cause an attach
