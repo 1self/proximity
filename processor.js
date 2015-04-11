@@ -86,22 +86,10 @@ var addSensorUrls = function(url, sensor, sensorsCollection){
 	logger.debug('adding sensor for ' + url, sensor);
 	activeSensors[url] = sensor;
 	addSensorToDatabase(url, sensor, sensorsCollection);
-
-	var urlParts = url.split('/');
-	for (var i = 3; i < urlParts.length; i++) {
-		var subUrl = _.slice(urlParts, 0, i).join('/');
-		logger.debug('adding suburl', subUrl);
-		activeSensors[subUrl] = sensor;
-		addSensorToDatabase(subUrl, sensor, sensorsCollection);
-	}
 };
 
 var addSensor = function(sensor, sensorsCollection){
 	var sensorUrl = sensor.url.toUpperCase();
-
-	if(activeSensors[sensor.url] !== undefined){
-		return;
-	}
 
 	logger.debug('sensor added to active sensor map', JSON.stringify(sensor));
 	addSensorUrls(sensorUrl, sensor, sensorsCollection);
@@ -111,15 +99,6 @@ var removeSensor = function(url, sensor, sensorsCollection){
 	logger.debug('sensor removed from active sensor map', sensor);
 	delete activeSensors[sensor.url];
 	removeSensorFromDatabase(url, sensor, sensorsCollection);
-
-	var urlParts = url.split('/');
-	for (var i = 3; i < urlParts.length; i++) {
-		var subUrl = _.slice(urlParts, 0, i).join('/');
-		logger.debug(subUrl);
-		activeSensors[subUrl] = sensor;
-		delete activeSensors[subUrl];
-		removeSensorFromDatabase(subUrl, sensor, sensorsCollection);
-	}
 	logger.debug('active sensors are', activeSensors);
 };
 
@@ -198,17 +177,6 @@ var cacheLastEvent = function(event, sensorsCollection, sensor){
 	var url = getUrl(event);
 	activeSensors[url] = sensor;
 	addCachedEventsToDatabase(key, cachedEvent, url, sensorsCollection);
-
-	var urlParts = url.split('/');
-	for (var i = 3; i < urlParts.length; i++) {
-		var subUrl = _.slice(urlParts, 0, i).join('/');
-		logger.debug('adding suburl', subUrl);
-		activeSensors[subUrl] = sensor;
-		addCachedEventsToDatabase(key, sensor, subUrl, sensorsCollection);
-	}
-	
-
-	
 };
 
 var deactivateBeacon = function(event, sensorsCollection, sensor){
@@ -225,11 +193,14 @@ var getSensor = function(event, sensorsCollection, callback){
 	var result = activeSensors[sensorUrl];
 	if(result !== undefined){
 		callback(result);
+		return;
 	}
 
+	var re = new RegExp(sensorUrl,"g");
 	var condition = {
-		url: sensorUrl
+		url: re
 	};
+
 
 	logger.debug('find with condition ', condition);
 	sensorsCollection.find(condition).toArray(function(err, docs){
@@ -249,11 +220,15 @@ var getSensor = function(event, sensorsCollection, callback){
 				attached: {},
 				cachedEvents: {}
 			};
+			logger.debug('result is', result);
 		}
 		else{
+
 			result = docs[0];
 		}
 
+		activeSensors[sensorUrl] = result;
+		logger.debug('post sensor add active sensors are', activeSensors);
 		callback(result);
 	});
 };
@@ -278,11 +253,10 @@ var copyCachedEvent = function(event, sensor, eventRepository){
 	_.forOwn(sensor.cachedEvents, copyToAttached);
 };
 
-var attach = function(event, sensorsCollection){
+var attach = function(event, sensor, sensorsCollection){
 	//eas: the geosense app currently in review at the app store has geofenceUrl in the 
 	// property. Once we have updated the app we can remove this.
 	var url = getUrl(event);
-	var sensor = activeSensors[url];
 
 	if(sensor === undefined){
 		logger.verbose('unknown sensor url: ' + url);
@@ -296,6 +270,7 @@ var attach = function(event, sensorsCollection){
 	}
 
 	sensor.attached[event.streamid] = true;
+	activeSensors[sensor.url] = sensor;
 	logger.verbose('stream attached', sensor);
 
 	var condition = {
@@ -403,7 +378,7 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 			// check for enter and exit events
 			var intersection = _.intersection(event.actionTags, ['enter', 'exit']);
 			if(intersection[0] === 'enter'){
-				attach(event, sensorsCollection);
+				attach(event, sensor, sensorsCollection);
 				copyCachedEvent(event, sensor, eventRepository);
 				logger.info(event.streamid + ' enter ' + event.properties.geofence);
 			} else if (intersection[0] === 'exit'){
@@ -441,6 +416,7 @@ var processMessage = function(event, sensorsCollection, eventRepository){
 };
 
 var loadSensors = function(sensorsCollection, callback){
+	logger.debug(sensorsCollection);
 	var condition = {
 		active: true
 	};
@@ -453,8 +429,12 @@ var loadSensors = function(sensorsCollection, callback){
 		}
 		
 		for (var i = docs.length - 1; i >= 0; i--) {
-			addSensor(docs[[i]]);
+			var sensor = docs[i];
+			var sensorUrl = sensor.url.toUpperCase();
+			activeSensors[sensor.url] = sensor;
 		}
+
+		logger.info('loaded sensors from database', activeSensors)
 
 		callback();
 	});

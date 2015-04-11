@@ -997,10 +997,14 @@ describe('proximity node module', function() {
         // first set stream ids etc
         assert(operations[0]['$set']['streamid'] === '2222', 'stream id not set for full url');
 
-
         assert(operations[3]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
+        assert(operations[3]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
+        
         assert(operations[4]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
+        assert(operations[4]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
+
         assert(operations[5]['$set']['cachedEvents.ambient-temperature-sample'].streamid === '2222', 'cachedEvents not saved properly');
+        assert(operations[5]['$set']['cachedEvents.ambient-temperature-sample'].objectTags[0] === 'ambient', 'objectTags not saved properly');
 
     });
 });
