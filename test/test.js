@@ -267,7 +267,7 @@ describe('proximity node module', function() {
 });
 
 describe('proximity node module', function() {
-    it('any event with geofence property is considered for copying', function() {
+    it('sensor reading after app restart copies to attached streams', function() {
         proximity.reset();
         
         tlog.info('');
@@ -283,18 +283,7 @@ describe('proximity node module', function() {
 
         sensors.find = function() {
             var cached = {};
-            cached['ambient-temperature-sample'] = {
-                streamid: '1111',
-                objectTags: ['ambient', 'temperature'],
-                actionTags: ['sample'],
-                dateTime: '2015-04-08T09:25.000+01:00',
-                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
-                properties: {
-                    celsius: 23
-                },
-                eventDateTime: new Date(),
-                eventLocalDateTime: new Date()
-            };
+       
 
             var result = {
                 url: 'ibeacon://AAAAAAAAAAAAAA/1/1',
@@ -351,12 +340,12 @@ describe('proximity node module', function() {
 });
 
 describe('proximity node module', function() {
-    it('uppercase sensor geofence and lower case proximity event geofence are matched', function() {
+    it('uppercase sensor reading geofence matches lower case enter event geofence', function() {
         proximity.reset();
 
         tlog.info('');
         tlog.info('===================================================================================');
-        tlog.info('test: uppercase sensor geofence and lower case proximity event geofence are matched');
+        tlog.info('test: uppercase sensor reading geofence matches lower case enter event geofence');
         tlog.info('===================================================================================');
 
         var sensors = {};
@@ -373,8 +362,6 @@ describe('proximity node module', function() {
             };
             return result;
         };
-
-
 
         var geofenceSensorReading1 = {
             streamid: '2222',
@@ -402,6 +389,36 @@ describe('proximity node module', function() {
             beaconAttached = true;
         };
 
+        sensors.find = function() {
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
+            };
+
+            var result = {
+                url: 'ibeacon://AAAAAAAAAAAAAA',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
         var geofenceEnter = {
             streamid: '1111',
             objectTags: ['proximity', 'ibeacon'],
@@ -418,12 +435,15 @@ describe('proximity node module', function() {
         };
 
         var eventRepository = {};
-        eventRepository.add = function(){
-
+         var events = [];
+        eventRepository.add = function(event){
+        	events.push(event);
         };
         proximity.processMessage(geofenceEnter, sensors, eventRepository);
 
         assert(beaconAttached, 'update to the attached streams was not called');
+        assert(events.length === 1, 'wrong number of events added: '  + events.length);
+        assert(events[0].objectTags[0] === 'ambient', 'wrong event copied');
 
     });
 });
@@ -432,17 +452,12 @@ describe('proximity node module', function() {
     it('lowercase sensor geofence and upper case proximity event geofence are matched', function() {
         proximity.reset();
 
-        
         tlog.info('');
-        
         tlog.info('==================================================');
-        
         tlog.info('test: lowercase sensor geofence and upper case proximity event geofence are matched');
-        
         tlog.info('==================================================');
 
         var sensors = {};
-
         
         tlog.info(sensors);
 
@@ -487,6 +502,36 @@ describe('proximity node module', function() {
             beaconAttached = true;
         };
 
+        sensors.find = function() {
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
+            };
+
+            var result = {
+                url: 'ibeacon://AAAAAAAAAAAAAA',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
         var geofenceEnter = {
             streamid: '1111',
             objectTags: ['proximity', 'ibeacon'],
@@ -503,12 +548,236 @@ describe('proximity node module', function() {
         };
 
 		var eventRepository = {};
-        eventRepository.add = function(){
-
+        var events = [];
+        eventRepository.add = function(event){
+        	events.push(event);
         };
         proximity.processMessage(geofenceEnter, sensors, eventRepository);
 
         assert(beaconAttached, 'update to the attached streams was not called');
+        assert(events.length === 1, 'wrong number of events added: '  + events.length);
+        assert(events[0].objectTags[0] === 'ambient', 'wrong event copied');
+
+    });
+});
+
+describe('proximity node module', function() {
+    it('uppercase sensor reading geofenceUrl matches lower case enter event geofenceUrl', function() {
+        proximity.reset();
+
+        tlog.info('');
+        tlog.info('===================================================================================');
+        tlog.info('test: uppercase sensor reading geofence matches lower case enter event geofence');
+        tlog.info('===================================================================================');
+
+        var sensors = {};
+        tlog.info(sensors);
+
+        sensors.update = function() {
+
+        };
+
+        sensors.find = function() {
+            var result = {};
+            result.toArray = function(callback) {
+                callback(null, []);
+            };
+            return result;
+        };
+
+        var geofenceSensorReading1 = {
+            streamid: '2222',
+            objectTags: ['ambient', 'temperature'],
+            actionTags: ['sample'],
+            dateTime: '2015-04-08T09:25.000+01:00',
+            geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+            properties: {
+                celsius: 23
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+        
+        tlog.info('test: process reading 1');
+
+        proximity.processMessage(geofenceSensorReading1, sensors);
+
+		sensors.find = function() {
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
+            };
+
+            var result = {
+                url: 'ibeacon://AAAAAAAAAAAAAA',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+        var beaconAttached = false;
+        sensors.update = function() {
+            beaconAttached = true;
+        };
+
+        var geofenceEnter = {
+            streamid: '1111',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['enter'],
+            properties: {
+                geofenceUrl: 'ibeacon://aaaaaaaaaaaaaa'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        var eventRepository = {};
+        var events = [];
+        eventRepository.add = function(event){
+        	events.push(event);
+        };
+        proximity.processMessage(geofenceEnter, sensors, eventRepository);
+
+        assert(beaconAttached, 'update to the attached streams was not called');
+        assert(events.length === 1, 'wrong number of events added: '  + events.length);
+        assert(events[0].objectTags[0] === 'ambient', 'wrong event copied');
+
+    });
+});
+
+describe('proximity node module', function() {
+    it('lowercase sensor geofenceUrl and upper case proximity event geofenceUrl are matched', function() {
+        proximity.reset();
+
+        tlog.info('');
+        tlog.info('==================================================');
+        tlog.info('test: lowercase sensor geofence and upper case proximity event geofence are matched');
+        tlog.info('==================================================');
+
+        var sensors = {};
+        
+        tlog.info(sensors);
+
+        sensors.update = function() {
+
+        };
+
+        sensors.find = function() {
+            var result = {};
+            result.toArray = function(callback) {
+                callback(null, []);
+            };
+            return result;
+        };
+
+
+
+        var geofenceSensorReading1 = {
+            streamid: '2222',
+            objectTags: ['ambient', 'temperature'],
+            actionTags: ['sample'],
+            dateTime: '2015-04-08T09:25.000+01:00',
+            geofence: 'ibeacon://aaaaaaaaaaaaaa/1/1',
+            properties: {
+                celsius: 23
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+        
+        tlog.info('test: process reading 1');
+
+        proximity.processMessage(geofenceSensorReading1, sensors);
+
+        var beaconAttached = false;
+        sensors.update = function() {
+            beaconAttached = true;
+        };
+
+        sensors.find = function() {
+            var cached = {};
+            cached['ambient-temperature-sample'] = {
+                streamid: '2222',
+                objectTags: ['ambient', 'temperature'],
+                actionTags: ['sample'],
+                dateTime: '2015-04-08T09:25.000+01:00',
+                geofence: 'ibeacon://AAAAAAAAAAAAAA/1/1',
+                properties: {
+                    celsius: 23
+                },
+                eventDateTime: new Date(),
+                eventLocalDateTime: new Date()
+            };
+
+            var result = {
+                url: 'ibeacon://AAAAAAAAAAAAAA',
+                streamid: '2222',
+                active: false,
+                attached: {},
+                cachedEvents: cached
+            };
+
+            var toArray = function(callback){
+            	callback(null, [result]);
+            };
+
+            return {toArray: toArray};
+        };
+
+        var geofenceEnter = {
+            streamid: '1111',
+            objectTags: ['proximity', 'ibeacon'],
+            actionTags: ['enter'],
+            properties: {
+                geofenceUrl: 'ibeacon://AAAAAAAAAAAAAA'
+            },
+            eventDateTime: {
+                $date: '2015-04-08T09:25.000+01:00'
+            },
+            eventLocalDateTime: {
+                $date: '2015-04-08T10:25.000Z'
+            }
+        };
+
+		var eventRepository = {};
+		var events = [];
+        eventRepository.add = function(event){
+        	events.push(event);
+        };
+        proximity.processMessage(geofenceEnter, sensors, eventRepository);
+
+        assert(beaconAttached, 'update to the attached streams was not called');
+        assert(events.length === 1, 'wrong number of events added: '  + events.length);
+        assert(events[0].objectTags[0] === 'ambient', 'wrong event copied');
 
     });
 });
