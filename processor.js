@@ -273,8 +273,9 @@ var attach = function(event, sensor, sensorsCollection){
 	activeSensors[sensor.url] = sensor;
 	logger.verbose('stream attached', sensor);
 
+	var re = '^' + sensor.url;
 	var condition = {
-		url: sensor.url
+		url: {$regex: re}
 	};
 
 	var key = 'attached.' + event.streamid;
@@ -319,8 +320,9 @@ var detach = function(event, sensorsCollection){
 	delete sensor.attached[event.streamid];	
 	logger.verbose('stream detached', sensor);
 	
+	var re = '^' + sensor.url;
 	var condition = {
-		url: sensor.url
+		url: {$regex: re}
 	};
 
 	var key = 'attached.' + event.streamid;

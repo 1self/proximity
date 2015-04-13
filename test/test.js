@@ -384,9 +384,11 @@ describe('proximity node module', function() {
 
         proximity.processMessage(geofenceSensorReading1, sensors);
 
-        var beaconAttached = false;
-        sensors.update = function() {
-            beaconAttached = true;
+        var conditions = [];
+        var operations = [];
+        sensors.update = function(condition, operation) {
+            conditions.push(condition);
+            operations.push(operation);
         };
 
         sensors.find = function() {
@@ -441,10 +443,14 @@ describe('proximity node module', function() {
         };
         proximity.processMessage(geofenceEnter, sensors, eventRepository);
 
-        assert(beaconAttached, 'update to the attached streams was not called');
+        tlog.info('events', events);
+        tlog.info('conditions', conditions);
+        tlog.info('conditions', JSON.stringify(conditions[0].url.$regex));
+        tlog.info('operations', operations);
+        assert(conditions.length > 0, 'update to the attached streams was not called');
+        assert(conditions[0].url['$regex'] === '^ibeacon://AAAAAAAAAAAAAA');
         assert(events.length === 1, 'wrong number of events added: '  + events.length);
         assert(events[0].objectTags[0] === 'ambient', 'wrong event copied');
-
     });
 });
 
@@ -2042,7 +2048,7 @@ describe('proximity node module', function() {
         assert(conditions.length === 1, 'incorrect number of updates called');
         tlog.info('conditions', conditions);
         tlog.info('operations', operations);
-        assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
+        assert(conditions[0].url.$regex === '^IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
         assert(operations[0].$unset['attached.1111'] === '');
     });
 });
@@ -2104,7 +2110,7 @@ describe('proximity node module', function() {
         assert(conditions.length === 1, 'incorrect number of updates called');
         tlog.info('conditions', conditions);
         tlog.info('operations', operations);
-        assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
+        assert(conditions[0].url.$regex === '^IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
         assert(operations[0].$unset['attached.1111'] === '');
     });
 });
@@ -2166,7 +2172,7 @@ describe('proximity node module', function() {
         assert(conditions.length === 1, 'incorrect number of updates called');
         tlog.info('conditions', conditions);
         tlog.info('operations', operations);
-        assert(conditions[0].url === 'IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
+        assert(conditions[0].url.$regex === '^IBEACON://AAAAAAAAAAAAAA/1/1', 'incorrect url');
         assert(operations[0].$unset['attached.1111'] === '');
     });
 });
