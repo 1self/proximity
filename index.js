@@ -10,10 +10,14 @@ var winston = require('winston');
 
 winston.add(winston.transports.File, { filename: 'proximity.log', level: 'debug', json: false });
 
-winston.error("Errors will be logged here");
-winston.warn("Warns will be logged here");
-winston.info("Info will be logged here");
-winston.debug("Debug will be logged here");
+winston.transports.console.level = 'info';
+
+winston.error('Errors will be logged here');
+winston.warn('Warns will be logged here');
+winston.info('Info will be logged here');
+winston.verbose('Verbose will be logged here');
+winston.debug('Debug will be logged here');
+winston.silly('Silly will be logged here');
 
 processor.setLogger(winston);
 
@@ -31,16 +35,16 @@ var url = process.env.DBURI;
 // Use connect method to connect to the Server
 MongoClient.connect(url, function(err, db) {
 
-	console.log('connected to db');
+	winston.info('connected to db');
 	if(err){
-		console.log(err);
+		winston.error(err);
 	}
 
 	var sensors = db.collection('sensors');
 
 	processor.loadSensors(sensors, function() {
 		redisSubscribe.on('message', function(channel, message){
-			winston.debug("message recieved from channel " + channel);
+			winston.debug('message recieved from channel ' + channel);
 			var event = JSON.parse(message);
 			processor.processMessage(event, sensors, eventRepository);
 		});

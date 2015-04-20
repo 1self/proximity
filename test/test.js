@@ -34,6 +34,11 @@ logger.debug = function(message, meta) {
     console.log('code: ' + JSON.stringify(meta));
 };
 
+logger.silly = function(message, meta) {
+    console.log('code: ' + message);
+    console.log('code: ' + JSON.stringify(meta));
+};
+
 
 describe('proximity node module', function() {
     it('ignores non proximity events', function() {

@@ -9,8 +9,6 @@ var setLogger = function(anotherLogger){
 	logger = anotherLogger;
 }; // this can be called outside the module to set the logger
 
-console.log(winston.transports.Console.toString());
-
 winston.debug('Debug messages will be logged in processor');
 
 var activeSensors = {};
@@ -31,7 +29,7 @@ var addSensorToDatabase = function(url, sensor, sensorsCollection){
 		upsert: true
 	};
 
-	logger.verbose('activating sensor ', sensor.url);
+	logger.verbose('adding sensor to database', sensor.url);
 	logger.debug('condition ', condition);
 	logger.debug('operation', operation);
 	logger.debug('options', options);
@@ -63,12 +61,10 @@ var removeSensorFromDatabase = function(url, sensor, sensorsCollection){
 		upsert: true
 	};
 
-	logger.verbose('deactivating sensor ', sensor.url);
+	logger.verbose('removing sensor from database ', sensor.url);
 	logger.debug('condition ', condition);
 	logger.debug('operation', operation);
 	logger.debug('options', options);
-
-	logger.debug('update is', sensorsCollection);
 	sensorsCollection.update(condition, operation, options, function(err, res){
 		if(err){
 			logger.error('error updating sensor', err);
@@ -78,20 +74,17 @@ var removeSensorFromDatabase = function(url, sensor, sensorsCollection){
 		}
 
 	});
-
-	logger.info('ending');
 };
 
 var addSensorUrls = function(url, sensor, sensorsCollection){
-	logger.debug('adding sensor for ' + url, sensor);
+	logger.silly('adding sensor for ' + url, sensor);
 	activeSensors[url] = sensor;
 	addSensorToDatabase(url, sensor, sensorsCollection);
 };
 
 var addSensor = function(sensor, sensorsCollection){
 	var sensorUrl = sensor.url.toUpperCase();
-
-	logger.debug('sensor added to active sensor map', JSON.stringify(sensor));
+	logger.debug('sensor added to active sensor map', sensor);
 	addSensorUrls(sensorUrl, sensor, sensorsCollection);
 };
 
@@ -99,7 +92,6 @@ var removeSensor = function(url, sensor, sensorsCollection){
 	logger.debug('sensor removed from active sensor map', sensor);
 	delete activeSensors[sensor.url];
 	removeSensorFromDatabase(url, sensor, sensorsCollection);
-	logger.debug('active sensors are', activeSensors);
 };
 
 var activateBeacon = function(event, sensorsCollection, sensor){
@@ -115,7 +107,7 @@ var addCachedEventsToDatabase = function(key, cachedEvent, url, sensorsCollectio
 
 	var set = {};
 	set['cachedEvents.' + key] = cachedEvent;
-	logger.debug('cached events', set);
+	logger.silly('cached events', set);
 	
 	var operation = {
 		$set: set
@@ -160,10 +152,7 @@ var cacheLastEvent = function(event, sensorsCollection, sensor){
 	logger.debug('caching event using key: ' + key);
 
 	var cachedEvent = {};
-	logger.debug('before merge', event);
 	_.merge(cachedEvent, event);
-	logger.debug('cached event is:', cachedEvent);
-	logger.debug('original event is: ', event);
 	cachedEvent.eventDateTime = new Date(cachedEvent.eventDateTime.$date);
 	cachedEvent.eventLocalDateTime = new Date(cachedEvent.eventLocalDateTime.$date);
 	
@@ -172,7 +161,7 @@ var cacheLastEvent = function(event, sensorsCollection, sensor){
 	}
 
 	sensor.cachedEvents[key] = cachedEvent;
-	logger.debug('sensor is', JSON.stringify(sensor));
+	logger.silly('sensor is', JSON.stringify(sensor));
 
 	var url = getUrl(event);
 	activeSensors[url] = sensor;
@@ -187,9 +176,9 @@ var deactivateBeacon = function(event, sensorsCollection, sensor){
 
 var getSensor = function(event, sensorsCollection, callback){
 	var sensorUrl = getUrl(event);
-	logger.debug('sensorUrl is ' + sensorUrl);
+	logger.debug('getSensor: sensorUrl is ' + sensorUrl);
 
-	logger.debug('activeSensors: ', activeSensors);
+	logger.silly('getSensor: activeSensors: ', activeSensors);
 	var result = activeSensors[sensorUrl];
 	if(result !== undefined){
 		callback(result);
@@ -202,7 +191,7 @@ var getSensor = function(event, sensorsCollection, callback){
 	};
 
 
-	logger.debug('find with condition ', condition);
+	logger.debug('getSensor: db find with condition ', condition);
 	sensorsCollection.find(condition).toArray(function(err, docs){
 		if(err){
 			logger.error('error finding sensor', err);
@@ -211,7 +200,7 @@ var getSensor = function(event, sensorsCollection, callback){
 
 		var result;
 		if(docs.length === 0){
-			logger.verbose('beacon not found, creating', sensorUrl);
+			logger.info('beacon not found, creating', sensorUrl);
 			logger.debug('streamid is ' + event.streamid);
 			result = {
 				url: sensorUrl, 
@@ -228,7 +217,7 @@ var getSensor = function(event, sensorsCollection, callback){
 		}
 
 		activeSensors[sensorUrl] = result;
-		logger.debug('post sensor add active sensors are', activeSensors);
+		logger.silly('post sensor add active sensors are', activeSensors);
 		callback(result);
 	});
 };
@@ -241,15 +230,13 @@ var copyCachedEvent = function(event, sensor, eventRepository){
 		newEvent.streamid = event.streamid;
 		newEvent.originalGeofence = value.geofence || value.properties.geofence || value.properties.geofenceUrl;
 		delete newEvent.geofence;
-		logger.verbose('new event for ' + newEvent.streamid + ': ');
-		logger.debug(newEvent);
 		newEvent.dateTime = event.dateTime;
 		newEvent.eventDateTime = event.eventDateTime;
 		newEvent.eventLocalDateTime = event.eventLocalDateTime;
+		logger.info('copying cached event to attaching stream: ' + newEvent.streamid + ': ' + newEvent.objectTags + '/' + newEvent.actionTags);
+		logger.silly(newEvent);
 		eventRepository.add(newEvent);
 	};
-
-	logger.debug('copying cached events', sensor.cachedEvents);
 	_.forOwn(sensor.cachedEvents, copyToAttached);
 };
 
@@ -259,19 +246,17 @@ var attach = function(event, sensor, sensorsCollection){
 	var url = getUrl(event);
 
 	if(sensor === undefined){
-		logger.verbose('unknown sensor url: ' + url);
+		logger.error('unknown sensor url while trying to attach to sensor: ' + url);
 		return;
 	}
 
-	logger.verbose('found the sensor', sensor);
 	if(sensor.attached === undefined){
-		logger.verbose('adding first attached stream');
 		sensor.attached = {};
 	}
 
 	sensor.attached[event.streamid] = true;
 	activeSensors[sensor.url] = sensor;
-	logger.verbose('stream attached', sensor);
+	logger.debug('stream attached', sensor);
 
 	var re = '^' + sensor.url;
 	var condition = {
@@ -308,13 +293,12 @@ var detach = function(event, sensorsCollection){
 	var sensor = activeSensors[url];
 
 	if(sensor === undefined){
-		logger.verbose('unknown sensor url');
+		logger.error('unknown sensor while trying to detach from sensor' + url);
 		return;
 	}
 
-	logger.verbose('found the sensor', sensor);
 	if(sensor.attached === {}){
-		logger.verbose('nothing attached');
+		logger.warn('a stream is being detached that wasnt already attached');
 	} 
 
 	delete sensor.attached[event.streamid];	
@@ -348,8 +332,7 @@ var detach = function(event, sensorsCollection){
 };
 
 var copyToAttachedStream = function(event, eventRepository){
-	logger.debug('copying to attached streams, activeSensors: ', activeSensors);
-	logger.debug('event is: ',event );
+	logger.silly('copying to attached streams, activeSensors: ', activeSensors);
 	var sensor = activeSensors[getUrl(event)];
 	logger.debug('sensor: ', sensor);
 	var copyToAttached = function(value, key){
@@ -357,7 +340,7 @@ var copyToAttachedStream = function(event, eventRepository){
 		newEvent.streamid = key;
 		newEvent.originalGeofence = newEvent.geofence;
 		delete newEvent.geofence;
-		logger.verbose('new event for ' + newEvent.streamid + ': ');
+		logger.info('copying event to attached stream:' + newEvent.streamid);
 		logger.debug(newEvent);
 		eventRepository.add(newEvent);
 	};
@@ -367,49 +350,44 @@ var copyToAttachedStream = function(event, eventRepository){
 };
 
 var processMessage = function(event, sensorsCollection, eventRepository){
-	logger.info('process message!');
+	logger.verbose('process message!');
 	var isProximity = _.indexOf(event.objectTags, 'proximity') >= 0; 
 	if(isProximity === false){
 		isProximity = _.indexOf(event.objectTags, 'geofence') >= 0; 
 	}
 
 	if(isProximity){
-		logger.verbose("proximity event received");
+		logger.info("proximity event received");
 		logger.debug("event details: ", event);
 		getSensor(event, sensorsCollection, function(sensor){
 			// check for enter and exit events
 			var intersection = _.intersection(event.actionTags, ['enter', 'exit']);
 			if(intersection[0] === 'enter'){
+				logger.info(event.streamid + ': enter ' + getUrl(event));
 				attach(event, sensor, sensorsCollection);
 				copyCachedEvent(event, sensor, eventRepository);
-				logger.info(event.streamid + ' enter ' + getUrl(event));
 			} else if (intersection[0] === 'exit'){
+				logger.info(event.streamid + ': exit ' + getUrl(event));
 				detach(event, sensorsCollection);
-				logger.info(event.streamid + ' exit ' + event.properties.geofence);
 			}
 
 			var startStopIntersection = _.intersection(event.actionTags, ['start', 'stop']);
 			if(startStopIntersection[0] === 'start'){
-				logger.verbose("event is proximity start");
+				logger.verbose(event.streamid + ": start" + getUrl(event));
 				activateBeacon(event, sensorsCollection, sensor);
-				logger.info('start ' + event.properties.geofence);
 			}
 
 			if(startStopIntersection[0] === 'stop'){
-				logger.verbose("event is proximity stop");
+				logger.verbose(event.streamid + ": stop" + getUrl(event));
 				deactivateBeacon(event, sensorsCollection, sensor);
-				logger.info('stop ' + event.properties.geofence);
 			}
 
 		});
 	}
 	
 	if(event.geofence !== undefined){
-		logger.info("event has geofence: ", event);
-		logger.debug('proximity is ' + isProximity);
+		logger.info("sensor event with geofence: ", event);
 		getSensor(event, sensorsCollection, function(sensor){
-			logger.info('get sensor callback called', sensor);
-			logger.info('passed to copy: ', event);
 			activateBeacon(event, sensorsCollection, sensor);
 			cacheLastEvent(event, sensorsCollection, sensor);
 			copyToAttachedStream(event, eventRepository);
@@ -423,7 +401,7 @@ var loadSensors = function(sensorsCollection, callback){
 		active: true
 	};
 
-	logger.debug('find with condition ', condition);
+	logger.debug('loadSensors: find with condition ', condition);
 	sensorsCollection.find(condition).toArray(function(err, docs){
 		if(err){
 			logger.error('error finding sensors', err);
@@ -436,7 +414,8 @@ var loadSensors = function(sensorsCollection, callback){
 			activeSensors[sensorUrl] = sensor;
 		}
 
-		logger.info('loaded sensors from database', activeSensors);
+		logger.info('loaded sensors from database');
+		logger.silly(activeSensors);
 
 		callback();
 	});
