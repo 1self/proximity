@@ -8,9 +8,9 @@ var processor = require('./processor');
 var MongoClient = require('mongodb').MongoClient;
 var winston = require('winston');
 
+winston.level = 'info';
 winston.add(winston.transports.File, { filename: 'proximity.log', level: 'debug', json: false });
 
-winston.transports.console.level = 'info';
 
 winston.error('Errors will be logged here');
 winston.warn('Warns will be logged here');
@@ -33,6 +33,8 @@ eventRepository.add = function(event){
 // Connection URL
 var url = process.env.DBURI;
 // Use connect method to connect to the Server
+winston.info('connecting to ', url);
+
 MongoClient.connect(url, function(err, db) {
 
 	winston.info('connected to db');
